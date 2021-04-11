@@ -1,5 +1,6 @@
 package com.hackermode.demo;
 
+import com.blade.exception.BladeException;
 import com.blade.mvc.annotation.BodyParam;
 import com.blade.mvc.annotation.Path;
 import com.blade.mvc.annotation.PathParam;
@@ -12,17 +13,35 @@ public class AuthController {
     
     @PostRoute("/register")
     public void register(@BodyParam User body, Response res) { 
-        AuthService.register(body, res); 
+        try {
+            String token = AuthService.register(body);
+            res.json(token);
+        } catch (Exception e) {
+            if (e instanceof BladeException) throw e;
+            ExceptionHandler.handle(e, res);
+        }
     }
 
     @PostRoute("/login")
     public void login(@BodyParam User body, Response res) {
-        AuthService.login(body, res);
+        try {
+            String token = AuthService.login(body);
+            res.json(token);
+        } catch (Exception e) {
+            if (e instanceof BladeException) throw e;
+            ExceptionHandler.handle(e, res);
+        }
     }
 
     @PostRoute("/logout")
     public void logout(@BodyParam User body, Response res) {
-        AuthService.logout(body, res);
+        try {
+            String count = AuthService.logout(body);
+            res.json(count);
+        } catch (Exception e) {
+            if (e instanceof BladeException) throw e;
+            ExceptionHandler.handle(e, res);
+        }
     }
 
     @PutRoute("/password-reset/:id")
@@ -30,5 +49,14 @@ public class AuthController {
         @PathParam String id, 
         @BodyParam User body, 
         Response res
-    ) { AuthService.passwordReset(id, body, res); }
+    ) 
+    { 
+        try {
+            String user = AuthService.passwordReset(id, body);
+            res.json(user);
+        } catch (Exception e) {
+            if (e instanceof BladeException) throw e;
+            ExceptionHandler.handle(e, res);
+        }
+    }
 }
