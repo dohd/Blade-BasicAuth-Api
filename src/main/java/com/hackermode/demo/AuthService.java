@@ -95,6 +95,7 @@ public class AuthService {
         Document user = Users.findOneAndUpdate(filter, update);        
         if (user == null) throw new BadRequestException("Invalid userId!");
         
-        return user.toJson();
+        Document response = new Document("update", 1);
+        return response.toJson();
     }
 }
