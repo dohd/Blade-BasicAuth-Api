@@ -8,39 +8,51 @@ import com.blade.mvc.annotation.PostRoute;
 import com.blade.mvc.annotation.PutRoute;
 import com.blade.mvc.http.Response;
 
+import org.bson.Document;
+
 @Path("/auth")
 public class AuthController {
     
     @PostRoute("/register")
     public void register(@BodyParam User body, Response res) { 
         try {
-            String token = AuthService.register(body);
-            res.json(token);
+            Document result = AuthService.register(body);
+            String sessionId = result.getString("sessionId");
+
+            res.cookie("sessionId", sessionId, 60*60*24, true);
+            result.remove("sessionId");
+
+            res.json(result.toJson());
         } catch (Exception e) {
             if (e instanceof BladeException) throw e;
-            ExceptionHandler.handle(e, res);
+            res.status(500).json("Internal Server Error");
         }
     }
 
     @PostRoute("/login")
     public void login(@BodyParam User body, Response res) {
         try {
-            String token = AuthService.login(body);
-            res.json(token);
+            Document result = AuthService.login(body);
+            String sessionId = result.getString("sessionId");
+
+            res.cookie("sessionId", sessionId, 60*60*24, true);
+            result.remove("sessionId");
+
+            res.json(result.toJson());
         } catch (Exception e) {
             if (e instanceof BladeException) throw e;
-            ExceptionHandler.handle(e, res);
+            res.status(500).json("Internal Server Error");
         }
     }
 
     @PostRoute("/logout")
     public void logout(@BodyParam User body, Response res) {
         try {
-            String count = AuthService.logout(body);
-            res.json(count);
+            String result = AuthService.logout(body);
+            res.json(result);
         } catch (Exception e) {
             if (e instanceof BladeException) throw e;
-            ExceptionHandler.handle(e, res);
+            res.status(500).json("Internal Server Error");
         }
     }
 
@@ -52,11 +64,11 @@ public class AuthController {
     ) 
     { 
         try {
-            String user = AuthService.passwordReset(id, body);
-            res.json(user);
+            String result = AuthService.passwordReset(id, body);
+            res.json(result);
         } catch (Exception e) {
             if (e instanceof BladeException) throw e;
-            ExceptionHandler.handle(e, res);
+            res.status(500).json("Internal Server Error");
         }
     }
 }
