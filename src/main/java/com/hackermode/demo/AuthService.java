@@ -14,12 +14,13 @@ import org.bson.types.ObjectId;
 
 public class AuthService {
     
-    public static String register(User body) {
+    public static Document register(User body) {
         MongoDatabase db = MongoConfig.getDatabase();
-        MongoCollection<Document> collection = db.getCollection("users");
+        MongoCollection<Document> Users = db.getCollection("users");
+        MongoCollection<Document> Sessions = db.getCollection("sessions");
 
         Bson name_filter = Filters.eq("name", body.getName());
-        Document prev_user = collection.find(name_filter).first();
+        Document prev_user = Users.find(name_filter).first();
         Boolean isExist = prev_user != null && prev_user.getString("name") != null;
         if (isExist) throw new BadRequestException("User already exists");
 
@@ -27,72 +28,73 @@ public class AuthService {
         user.append("name", body.getName());
         user.append("password", body.getPassword());
 
-        InsertOneResult user_result =  collection.insertOne(user);
+        InsertOneResult user_result =  Users.insertOne(user);
         Bson id_filter = Filters.eq("_id", user_result.getInsertedId());
-        Document saved_user = collection.find(id_filter).first();
+        Document saved_user = Users.find(id_filter).first();
 
         String userId = saved_user.getString("userId");
         Document session = new Document("userId", userId);
         session.append("sessionId", new ObjectId().toHexString());
 
-        InsertOneResult session_result =  db.getCollection("sessions").insertOne(session);
+        InsertOneResult session_result =  Sessions.insertOne(session);
         Bson session_filter = Filters.eq("_id", session_result.getInsertedId());
-        Document saved_session = db.getCollection("sessions").find(session_filter).first();
+        Document saved_session = Sessions.find(session_filter).first();
         String sessionId = saved_session.getString("sessionId");
 
-        Document token = new Document("token", sessionId);
-        return token.toJson();
+        Document response = new Document("userId", userId);
+        response.append("sessionId", sessionId);
+        return response;
     }
 
-    public static String login(User body) {
+    public static Document login(User body) {
         MongoDatabase db = MongoConfig.getDatabase();
-        MongoCollection<Document> collection = db.getCollection("users");
+        MongoCollection<Document> Users = db.getCollection("users");
+        MongoCollection<Document> Sessions = db.getCollection("sessions");
 
         Bson name_filter = Filters.eq("name", body.getName());
-        Document user = collection.find(name_filter).first();
-        Boolean isExist = user != null;
+        Document user = Users.find(name_filter).first();
+        Boolean userExists = user != null;
         
-        if (!isExist) throw new BadRequestException("Invalid username or password");
-        if (isExist) {
-            Boolean isValidPass = user.getString("password").equals(body.getPassword());
-            if (!isValidPass) throw new BadRequestException("Invalid username or password");
-        }
+        if (!userExists) throw new BadRequestException("Invalid name or password");
+        Boolean isValidPass = user.getString("password").equals(body.getPassword());
+        if (!isValidPass) throw new BadRequestException("Invalid name or password");
 
         String userId = user.getString("userId");
         Document session = new Document("userId", userId);
         session.append("sessionId", new ObjectId().toHexString());
 
-        InsertOneResult result =  db.getCollection("sessions").insertOne(session);
-        Bson session_filter = Filters.eq("_id", result.getInsertedId());
-        Document user_session = db.getCollection("sessions").find(session_filter).first();
+        InsertOneResult session_result =  Sessions.insertOne(session);
+        Bson session_filter = Filters.eq("_id", session_result.getInsertedId());
+        Document user_session = Sessions.find(session_filter).first();
         String sessionId = user_session.getString("sessionId");
 
-        Document token = new Document("token", sessionId);
-        return token.toJson();
+        Document response = new Document("userId", userId);
+        response.append("sessionId", sessionId);
+        return response;
     }
 
     public static String logout(User body) {
         MongoDatabase db = MongoConfig.getDatabase();
-        MongoCollection<Document> collection = db.getCollection("sessions");
+        MongoCollection<Document> Sessions = db.getCollection("sessions");
         
         Bson filter = Filters.eq("userId", body.getUserId());
-        DeleteResult result = collection.deleteOne(filter);
-        Document doc = new Document("count", result.getDeletedCount());
-        return doc.toJson();
+        DeleteResult result = Sessions.deleteOne(filter);
+        Document response = new Document("count", result.getDeletedCount());
+        return response.toJson();
     }
 
     public static String passwordReset(String id, User body) {
+        MongoDatabase db = MongoConfig.getDatabase();
+        MongoCollection<Document> Users = db.getCollection("users");
+
         Boolean hasPass =  body.getPassword() != null;
         if (!hasPass) throw new BadRequestException("Password is required!");
 
-        MongoDatabase db = MongoConfig.getDatabase();
-        MongoCollection<Document> collection = db.getCollection("users");
-
         Bson filter = Filters.eq("userId", id);
         Bson update = Updates.set("password", body.getPassword());
-        Document user = collection.findOneAndUpdate(filter, update);
-        
+        Document user = Users.findOneAndUpdate(filter, update);        
         if (user == null) throw new BadRequestException("Invalid userId!");
+        
         return user.toJson();
     }
 }
