@@ -21,8 +21,8 @@ public class AuthService {
 
         Bson name_filter = Filters.eq("name", body.getName());
         Document prev_user = Users.find(name_filter).first();
-        Boolean isExist = prev_user != null && prev_user.getString("name") != null;
-        if (isExist) throw new BadRequestException("User already exists");
+        Boolean userExists = prev_user != null;
+        if (userExists) throw new BadRequestException("User already exists");
 
         Document user = new Document("userId", new ObjectId().toHexString());
         user.append("name", body.getName());
